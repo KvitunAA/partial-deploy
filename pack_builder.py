@@ -1,4 +1,4 @@
-"""Сборка каталога частичной выкладки 1С: файлы Тип + список + cmd + README."""
+"""Сборка каталога частичной выкладки 1С: минимальная выгрузка + список + cmd + README."""
 
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def write_local_cmd_example(
     )
     platform = platform_path or r"C:\Program Files\1cv8\8.5.1.1522\bin\1cv8.exe"
     log = log_dir or r"C:\temp\1c-partial-deploy"
-    src = src_hint or r"%~dp0Тип"
+    src = src_hint or r"%~dp0config"
 
     lines = [
         "@echo off",
@@ -158,7 +158,9 @@ def _copy_runner(output_dir: Path) -> Path:
     return dest
 
 
-def _write_readme(output_dir: Path, title: str, plan_id: str) -> Path:
+def _write_readme(
+    output_dir: Path, title: str, plan_id: str, config_root_folder: str
+) -> Path:
     readme = output_dir / "README-partial-deploy.txt"
     today = date.today().strftime("%d.%m.%Y")
     text = f"""Частичная выкладка 1С — {title}
@@ -167,7 +169,7 @@ def _write_readme(output_dir: Path, title: str, plan_id: str) -> Path:
 
 1) deploy-local.cmd.example → deploy-local.cmd (IB_CONN или файл, USER, при необходимости PASS).
 2) deploy-partial.cmd — запуск (подтверждение YES).
-3) Папка Тип\\ — минимальная выгрузка.
+3) Папка {config_root_folder}\\ — минимальная выгрузка из плана.
 4) partial-deploy-list.txt — список для -listFile.
 
 Платформа 8.5: /IBConnectionString, -partial, -updateConfigDumpInfo, /UpdateDBCfg Dynamic+.
@@ -193,18 +195,18 @@ def build_pack(
         )
 
     files, meta = resolve_file_list(plan_id, file_paths, custom_plan_path)
-    root_name = meta.get("config_root_folder", "Тип")
+    root_name = meta.get("config_root_folder", "config")
     title = pack_title or meta.get("title") or meta.get("id", "partial")
     pid = meta.get("id", plan_id or "custom")
 
     out = Path(output_directory)
     if out.exists():
         shutil.rmtree(out)
-    tip = out / root_name
-    tip.mkdir(parents=True)
+    pack_config = out / root_name
+    pack_config.mkdir(parents=True)
 
     if meta.get("include_configuration_xml", True):
-        shutil.copy2(src_root / "Configuration.xml", tip / "Configuration.xml")
+        shutil.copy2(src_root / "Configuration.xml", pack_config / "Configuration.xml")
 
     copied: list[str] = []
     for rel in files:
@@ -212,7 +214,7 @@ def build_pack(
         src_file = src_root / rel_win
         if not src_file.is_file():
             raise FileNotFoundError(f"Нет файла в источнике: {src_file}")
-        dest = tip / rel_win
+        dest = pack_config / rel_win
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src_file, dest)
         copied.append(rel)
@@ -225,7 +227,7 @@ def build_pack(
     manifest.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
 
     _copy_runner(out)
-    _write_readme(out, title, pid)
+    _write_readme(out, title, pid, root_name)
 
     plan_snapshot = out / "plan.json"
     plan_snapshot.write_text(
@@ -244,7 +246,7 @@ def build_pack(
 
     return {
         "output_directory": str(out),
-        "config_folder": str(tip),
+        "config_folder": str(pack_config),
         "files_copied": len(copied) + (1 if meta.get("include_configuration_xml", True) else 0),
         "list_file": str(list_path),
         "runner": str(out / "deploy-partial.cmd"),

@@ -14,7 +14,7 @@ if exist "%ROOT%deploy-local.cmd" (
 )
 
 if not defined PLATFORM set "PLATFORM=C:\Program Files\1cv8\8.5.1.1522\bin\1cv8.exe"
-if not defined SRC set "SRC=%ROOT%Тип"
+if not defined SRC set "SRC=%ROOT%config"
 if not defined LISTFILE set "LISTFILE=%ROOT%partial-deploy-list.txt"
 if not defined LOGDIR set "LOGDIR=C:\temp\1c-partial-deploy"
 

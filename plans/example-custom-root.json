@@ -1,0 +1,12 @@
+{
+  "id": "example-custom-root",
+  "title": "Тест: своё имя папки в пакете",
+  "description": "Показывает поле config_root_folder — в пакете будет minimal-cf\\ вместо config\\",
+  "config_root_folder": "minimal-cf",
+  "include_configuration_xml": true,
+  "files": [
+    "Catalogs/DemoСправочник.xml",
+    "CommonModules/DemoОбщийМодуль.xml",
+    "CommonModules/DemoОбщийМодуль/Ext/Module.bsl"
+  ]
+}

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # partial-deploy (MCP)
 
 Формирование пакета частичной выкладки 1С по плану разработки и командных файлов загрузки.
@@ -29,7 +28,7 @@ python -m venv .venv
 |------|------------|
 | `list_deploy_plans` | Встроенные планы (`plans/*.json`) |
 | `get_deploy_plan` | Файлы и описание плана |
-| `build_partial_deploy_pack` | Собрать `Тип\`, список, `deploy-partial.cmd`, README, zip |
+| `build_partial_deploy_pack` | Собрать папку выгрузки, список, `deploy-partial.cmd`, README, zip |
 | `create_connection_profile` | `deploy-local.cmd.example` (server/file, логин, пароль) |
 | `run_partial_deploy` | Запуск `deploy-partial.cmd`, только `confirm=YES` |
 
@@ -40,19 +39,29 @@ python -m venv .venv
 - для **file**: `file_infobase_path`
 - **user**, при необходимости **password**, **platform_path**
 
-## Планы
+## Тестовые планы (`plans/`)
 
-Добавляйте JSON в `plans/`, образец — `ekruly-v7.json`:
+В репозитории только **учебные** JSON — пути вымышленные, подставьте свою выгрузку или скопируйте план под задачу.
+
+| `plan_id` | Назначение |
+|-----------|------------|
+| `example-minimal` | Один справочник, папка в пакете `config\` |
+| `example-custom-root` | Несколько объектов, папка в пакете `minimal-cf\` |
+
+Образец своего плана:
 
 ```json
 {
   "id": "my-plan",
-  "title": "…",
-  "config_root_folder": "Тип",
+  "title": "Моя выкладка",
+  "config_root_folder": "config",
   "include_configuration_xml": true,
-  "files": ["Catalogs/…"]
+  "files": ["Catalogs/МойСправочник.xml"]
 }
 ```
+
+- **`config_root_folder`** — имя подпапки **внутри пакета** (по умолчанию `config`); в `deploy-local.cmd` задайте `SRC`, если имя не `config`.
+- Пути в **`files`** — от **корня выгрузки на диске** (где лежит `Configuration.xml`), слэши `/`.
 
 ## Свой plan.json из OpenSpec / плана в Cursor
 

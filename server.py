@@ -48,9 +48,9 @@ def list_deploy_plans() -> str:
 
 @mcp.tool()
 def get_deploy_plan(
-    plan_id: Annotated[str, Field(description="Идентификатор плана, например ekruly-v7")],
+    plan_id: Annotated[str, Field(description="Идентификатор плана, например example-minimal")],
 ) -> str:
-    """Полный план: описание и перечень файлов относительно корня выгрузки (Тип/)."""
+    """Полный план: описание и перечень файлов относительно корня выгрузки на диске."""
     data = load_plan(plan_id)
     return json.dumps(data, ensure_ascii=False, indent=2)
 
@@ -59,7 +59,7 @@ def get_deploy_plan(
 def build_partial_deploy_pack(
     source_configuration_path: Annotated[
         str,
-        Field(description="Каталог выгрузки 1С с Configuration.xml (например ...\\Тип)"),
+        Field(description="Каталог полной выгрузки 1С с Configuration.xml"),
     ],
     output_directory: Annotated[
         str,
@@ -67,7 +67,7 @@ def build_partial_deploy_pack(
     ],
     plan_id: Annotated[
         str | None,
-        Field(description="ID плана из list_deploy_plans, например ekruly-v7"),
+        Field(description="ID плана из list_deploy_plans, например example-minimal"),
     ] = None,
     file_paths: Annotated[
         list[str] | None,
@@ -81,7 +81,8 @@ def build_partial_deploy_pack(
     create_zip: Annotated[bool, Field(description="Создать zip рядом с каталогом пакета")] = True,
 ) -> str:
     """
-    Собирает каталог для частичного деплоя: Тип\\, partial-deploy-list.txt,
+    Собирает каталог для частичного деплоя: папка config\\ (или config_root_folder из плана),
+    partial-deploy-list.txt,
     deploy-partial.cmd, README, manifest; опционально zip.
     Нужен plan_id или file_paths или custom_plan_path.
     """

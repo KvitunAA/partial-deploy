@@ -1,0 +1,11 @@
+{
+  "id": "example-minimal",
+  "title": "Тест: один объект конфигурации",
+  "description": "Учебный план для проверки MCP; пути вымышленные — подставьте свою выгрузку",
+  "config_root_folder": "config",
+  "include_configuration_xml": true,
+  "files": [
+    "Catalogs/DemoСправочник.xml",
+    "Catalogs/DemoСправочник/Ext/ManagerModule.bsl"
+  ]
+}

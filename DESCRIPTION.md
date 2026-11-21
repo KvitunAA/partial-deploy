@@ -8,7 +8,8 @@
 
 MCP помогает готовить **частичную выкладку** конфигурации 1С по **плану разработки**:
 
-- копирует только нужные файлы из выгрузки (`Тип\` или другой корень);
+- копирует только нужные файлы из полной выгрузки на диске;
+- складывает их в подпапку пакета (имя задаётся в плане, по умолчанию `config`);
 - формирует `partial-deploy-list.txt` для `-listFile`;
 - кладёт `deploy-partial.cmd`, README и manifest;
 - опционально собирает zip;
@@ -51,9 +52,9 @@ python -m venv .venv
 
 Один из вариантов:
 
-- `plan_id` — например `ekruly-v7`;
+- `plan_id` — например `example-minimal`;
 - `custom_plan_path` — свой JSON с полем `files`;
-- `file_paths` — массив путей относительно корня выгрузки.
+- `file_paths` — массив путей относительно корня выгрузки на диске.
 
 ### `create_connection_profile` — подключение
 
@@ -68,32 +69,40 @@ python -m venv .venv
 
 Реально вызывает Designer. В каталоге пакета должны быть `deploy-partial.cmd` и `deploy-local.cmd`. Без явного согласия пользователя не вызывать.
 
-## Формат плана (`plans\*.json`)
+## Тестовые планы (`plans\*.json`)
+
+В репозитории лежат **учебные** планы с вымышленными путями — для демонстрации формата и проверки сборки. Для продакшена скопируйте JSON и укажите реальные пути из вашей выгрузки.
+
+| Файл | `plan_id` | Зачем |
+|------|-----------|-------|
+| `example-minimal.json` | `example-minimal` | Минимум: один справочник, `config_root_folder`: `config` |
+| `example-custom-root.json` | `example-custom-root` | Другое имя папки в пакете: `minimal-cf` |
 
 ```json
 {
-  "id": "ekruly-v7",
-  "title": "Экрулы по ТЗ v7",
-  "description": "…",
-  "config_root_folder": "Тип",
+  "id": "example-minimal",
+  "title": "Тест: один объект конфигурации",
+  "description": "Учебный план; пути вымышленные",
+  "config_root_folder": "config",
   "include_configuration_xml": true,
   "files": [
-    "InformationRegisters/….xml",
-    "CommonModules/…/Ext/Module.bsl"
+    "Catalogs/DemoСправочник.xml",
+    "Catalogs/DemoСправочник/Ext/ManagerModule.bsl"
   ]
 }
 ```
 
-Пути — **от корня выгрузки**, прямые слэши `/`.
+Поля:
 
-Встроенный план: **`ekruly-v7`** (доработка экрулов ТЗ v7, 19 объектных путей + `Configuration.xml`).
+- **`config_root_folder`** — подпапка внутри собранного пакета (не имя каталога на вашем диске). По умолчанию в коде — `config`. В `deploy-local.cmd.example` переменная `SRC` должна указывать на неё (`%~dp0config` или `%~dp0minimal-cf`).
+- **`files`** — пути от корня **источника** `source_configuration_path`, слэши `/`.
 
 ## Состав пакета после сборки
 
 ```
 <output_directory>\
-  Тип\                          … минимальная выгрузка
-  partial-deploy-list.txt       … для Designer -listFile
+  <config_root_folder>\           … минимальная копия выгрузки
+  partial-deploy-list.txt         … для Designer -listFile
   deploy-partial.cmd              … запуск загрузки (подтверждение YES)
   deploy-local.cmd.example        … создаётся через create_connection_profile
   README-partial-deploy.txt
@@ -102,7 +111,7 @@ python -m venv .venv
   <имя>.zip                       … если create_zip=true
 ```
 
-Загрузка (как в проекте Просто):  
+Загрузка (платформа 8.5):  
 `/LoadConfigFromFiles` + `-listFile` + `-partial` + `-updateConfigDumpInfo` + `/UpdateDBCfg Dynamic+` через `/IBConnectionString`.
 
 Успех: `deploy-partial-result.txt` содержит `0`.
@@ -113,7 +122,7 @@ python -m venv .venv
 |------|------------|
 | `server.py` | MCP-сервер |
 | `pack_builder.py` | Логика сборки |
-| `plans\` | Планы выкладки |
+| `plans\` | Тестовые и пользовательские планы |
 | `templates\deploy-partial.cmd` | Шаблон батника |
 | `requirements.txt` | Зависимости Python |
 | `run_server.cmd` | Запуск |
@@ -125,9 +134,3 @@ python -m venv .venv
 - `deploy-local.cmd` с паролем и адресом прода **не коммитить**.
 - `run_partial_deploy` только после явного подтверждения оператора.
 - На проде закрыть лишние сеансы конфигуратора с целевой ИБ.
-
-## Связанные артефакты проекта Просто
-
-- Готовый пакет для прода: `partial-deploy-prod\ekruly-v7\`
-- Список для тестовой ИБ: `load-tip-kz-list.txt` (корень репозитория)
-- Частичная выкладка в файловую «База ТИП»: `deploy-tip-partial.ps1`
