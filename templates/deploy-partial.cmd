@@ -18,14 +18,11 @@ if not defined SRC set "SRC=%ROOT%config"
 if not defined LISTFILE set "LISTFILE=%ROOT%partial-deploy-list.txt"
 if not defined LOGDIR set "LOGDIR=C:\temp\1c-partial-deploy"
 
-if not defined IB_CONN (
-    if defined SRV if defined REF (
-        set "IB_CONN=Srvr=""%SRV%"";Ref=""%REF%"";"
-    )
-)
-
-if not defined IB_CONN (
-    echo [ОШИБКА] Задайте IB_CONN в deploy-local.cmd ^(server/file^)
+set "CONN_READY="
+if defined FILE_IB set "CONN_READY=1"
+if defined SRV if defined REF set "CONN_READY=1"
+if not defined CONN_READY (
+    echo [ОШИБКА] Задайте SRV и REF или FILE_IB в deploy-local.cmd
     exit /b 1
 )
 if not defined USER (
@@ -50,17 +47,23 @@ if not exist "%LOGDIR%" mkdir "%LOGDIR%"
 echo.
 echo === Частичная загрузка конфигурации ===
 echo Платформа: %PLATFORM%
-echo Подключ.:  %IB_CONN%
+if defined FILE_IB (
+    echo Подключ.:  File="%FILE_IB%";
+) else (
+    echo Подключ.:  Srvr="%SRV%";Ref="%REF%";
+)
 echo Пользов.:  %USER%
 echo Источник:  %SRC%
 echo Список:    %LISTFILE%
 echo Логи:      %LOGDIR%
 echo.
+if /I "%CONFIRM%"=="YES" goto confirmed
 set /p CONFIRM=Введите YES для продолжения:
 if /I not "%CONFIRM%"=="YES" (
     echo Отменено.
     exit /b 1
 )
+:confirmed
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Get-Process -Name '1cv8','1cv8c','1cv8s' -ErrorAction SilentlyContinue | Stop-Process -Force"
@@ -73,16 +76,10 @@ set "LOG=%LOGDIR%\deploy-partial.log"
 set "RESULT=%LOGDIR%\deploy-partial-result.txt"
 del /F /Q "%LOG%" "%RESULT%" 2>nul
 
-if defined PASS (
-    "%PLATFORM%" DESIGNER /IBConnectionString %IB_CONN% /N "%USER%" /P "%PASS%" ^
-      /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
-      /UpdateDBCfg Dynamic+ ^
-      /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
+if defined FILE_IB (
+    call :LoadConfig "File=""%FILE_IB%"";"
 ) else (
-    "%PLATFORM%" DESIGNER /IBConnectionString %IB_CONN% /N "%USER%" ^
-      /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
-      /UpdateDBCfg Dynamic+ ^
-      /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
+    call :LoadConfig "Srvr=""%SRV%"";Ref=""%REF%"";"
 )
 
 if not exist "%RESULT%" (
@@ -94,3 +91,17 @@ type "%RESULT%"
 findstr /B /C:"0" "%RESULT%" >nul || exit /b 1
 echo Частичная загрузка успешна.
 exit /b 0
+
+:LoadConfig
+if defined PASS (
+    "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /P "%PASS%" ^
+      /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
+      /UpdateDBCfg Dynamic+ ^
+      /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
+) else (
+    "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" ^
+      /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
+      /UpdateDBCfg Dynamic+ ^
+      /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
+)
+exit /b %ERRORLEVEL%

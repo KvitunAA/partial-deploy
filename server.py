@@ -146,8 +146,8 @@ def create_connection_profile(
     ] = False,
 ) -> str:
     """
-    Формирует deploy-local.cmd.example с IB_CONN, USER, PLATFORM.
-    Для прода на SQL: connection_type=server, server_name + infobase_name.
+    Формирует deploy-local.cmd.example: SRV+REF или FILE_IB, USER, PLATFORM, SRC из plan.json.
+    Для серверной ИБ: connection_type=server, server_name + infobase_name.
     Для файловой ИБ: connection_type=file + file_infobase_path.
     Обязательные поля, если не заданы заранее, уточняйте у пользователя.
     """
@@ -197,6 +197,8 @@ def run_partial_deploy(
     if not os.path.isfile(cmd):
         return json.dumps({"error": f"Нет {cmd}"}, ensure_ascii=False)
     logger.info("Запуск частичной выкладки: %s", cmd)
+    env = os.environ.copy()
+    env["CONFIRM"] = "YES"
     proc = subprocess.run(
         ["cmd", "/c", cmd],
         cwd=pack_directory,
@@ -204,6 +206,8 @@ def run_partial_deploy(
         text=True,
         encoding="utf-8",
         errors="replace",
+        env=env,
+        stdin=subprocess.DEVNULL,
     )
     return json.dumps(
         {

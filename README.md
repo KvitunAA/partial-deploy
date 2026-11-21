@@ -18,7 +18,7 @@ python -m venv .venv
 "partial-deploy": {
   "command": "C:\\path\\to\\partial-deploy\\.venv\\Scripts\\python.exe",
   "args": ["C:\\path\\to\\partial-deploy\\server.py"],
-  "description": "Частичный деплой 1С: пакет по плану, IB_CONN, запуск cmd"
+  "description": "Частичный деплой 1С: пакет по плану, SRV/REF или FILE_IB, запуск cmd"
 }
 ```
 
@@ -60,7 +60,8 @@ python -m venv .venv
 }
 ```
 
-- **`config_root_folder`** — имя подпапки **внутри пакета** (по умолчанию `config`); в `deploy-local.cmd` задайте `SRC`, если имя не `config`.
+- **`config_root_folder`** — имя подпапки **внутри пакета** (по умолчанию `config`). `create_connection_profile` сам пишет этот путь в `SRC`.
+- **`include_configuration_xml`** — добавляет `Configuration.xml` в список загрузки.
 - Пути в **`files`** — от **корня выгрузки на диске** (где лежит `Configuration.xml`), слэши `/`.
 
 ## Свой plan.json из OpenSpec / плана в Cursor

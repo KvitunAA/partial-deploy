@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import zipfile
 from datetime import date
@@ -74,29 +75,63 @@ def resolve_file_list(
     return normalized, meta
 
 
-def build_ib_connection_string(
+def _bat_set(name: str, value: str) -> str:
+    """Строка set для cmd. Значение без кавычек: их добавляет сам батник при вызове 1cv8."""
+    if re.search(r'[\r\n"]', value):
+        raise ValueError(f"{name}: кавычки и переводы строк недопустимы")
+    return f'set "{name}={value.replace("%", "%%")}"'
+
+
+def _folder_name(value: str) -> str:
+    name = value.strip()
+    if not name or name in {".", ".."} or re.search(r'[/\\:"%&<>|?*]', name):
+        raise ValueError(f"Недопустимое имя папки пакета: {value}")
+    return name
+
+
+def resolve_connection_parts(
     connection_type: str,
     server_name: str | None,
     infobase_name: str | None,
     ib_connection_string: str | None,
     file_infobase_path: str | None,
-) -> str:
+) -> dict[str, str]:
+    """Части подключения без кавычек: mode=server (server, ref) или mode=file (path)."""
     ct = connection_type.strip().lower()
+    if ct not in {"server", "file"}:
+        raise ValueError('connection_type должен быть "server" или "file"')
+
     if ib_connection_string and ib_connection_string.strip():
-        return ib_connection_string.strip()
+        raw = ib_connection_string.strip()
+        file_match = re.search(r'(?i)(?:^|;)File="([^"]*)"', raw)
+        server_match = re.search(r'(?i)(?:^|;)Srvr="([^"]*)"', raw)
+        ref_match = re.search(r'(?i)(?:^|;)Ref="([^"]*)"', raw)
+        if ct == "file":
+            if not file_match:
+                raise ValueError('Для file в ib_connection_string нужен File="...";')
+            return {"mode": "file", "path": file_match.group(1)}
+        if not server_match or not ref_match:
+            raise ValueError('Для server в ib_connection_string нужны Srvr="..."; и Ref="...";')
+        return {"mode": "server", "server": server_match.group(1), "ref": ref_match.group(1)}
+
     if ct == "server":
         if not server_name or not infobase_name:
             raise ValueError(
                 "Для server нужны server_name и infobase_name (или полная ib_connection_string)"
             )
-        return f'Srvr="{server_name}";Ref="{infobase_name}";'
-    if ct == "file":
-        if not file_infobase_path:
-            raise ValueError("Для file нужен file_infobase_path или ib_connection_string")
-        # File= для /IBConnectionString (как в staged-скриптах проекта)
-        p = file_infobase_path.replace("/", "\\")
-        return f'File="{p}";'
-    raise ValueError('connection_type должен быть "server" или "file"')
+        return {"mode": "server", "server": server_name, "ref": infobase_name}
+
+    if not file_infobase_path:
+        raise ValueError("Для file нужен file_infobase_path или ib_connection_string")
+    return {"mode": "file", "path": file_infobase_path.replace("/", "\\")}
+
+
+def _pack_config_folder(output_dir: Path) -> str:
+    plan_path = output_dir / "plan.json"
+    if not plan_path.is_file():
+        return "config"
+    data = json.loads(plan_path.read_text(encoding="utf-8"))
+    return _folder_name(str(data.get("config_root_folder") or "config"))
 
 
 def write_local_cmd_example(
@@ -112,7 +147,7 @@ def write_local_cmd_example(
     src_hint: str | None,
     log_dir: str | None,
 ) -> Path:
-    ib = build_ib_connection_string(
+    parts = resolve_connection_parts(
         connection_type,
         server_name,
         infobase_name,
@@ -121,29 +156,28 @@ def write_local_cmd_example(
     )
     platform = platform_path or r"C:\Program Files\1cv8\8.5.1.1522\bin\1cv8.exe"
     log = log_dir or r"C:\temp\1c-partial-deploy"
-    src = src_hint or r"%~dp0config"
+    folder = _pack_config_folder(output_dir)
+    src = src_hint or f"%~dp0{folder}"
 
     lines = [
         "@echo off",
         "REM Скопируйте в deploy-local.cmd (не коммитить).",
-        f'set "PLATFORM={platform}"',
+        "REM Кавычки в строку подключения подставляет deploy-partial.cmd.",
+        _bat_set("PLATFORM", platform),
         f'set "SRC={src}"',
-        f'set "LOGDIR={log}"',
-        f'set "USER={user}"',
+        _bat_set("LOGDIR", log),
+        _bat_set("USER", user),
     ]
     if password:
-        lines.append(f'set "PASS={password}"')
+        lines.append(_bat_set("PASS", password))
     else:
         lines.append("REM Пароль не задан — строку PASS не раскрывать")
 
-    if connection_type.lower() == "server":
-        lines.append(f'set "IB_CONN={ib}"')
-        if server_name and infobase_name and not ib_connection_string:
-            lines.append(f'REM Альтернатива: set "SRV={server_name}" / set "REF={infobase_name}"')
+    if parts["mode"] == "server":
+        lines.append(_bat_set("SRV", parts["server"]))
+        lines.append(_bat_set("REF", parts["ref"]))
     else:
-        lines.append(f'set "IB_CONN={ib}"')
-        if file_infobase_path:
-            lines.append(f'REM Файловая ИБ: {file_infobase_path}')
+        lines.append(_bat_set("FILE_IB", parts["path"]))
 
     text = "\r\n".join(lines) + "\r\n"
     target = output_dir / "deploy-local.cmd.example"
@@ -167,10 +201,10 @@ def _write_readme(
 План: {plan_id}
 Дата сборки: {today}
 
-1) deploy-local.cmd.example → deploy-local.cmd (IB_CONN или файл, USER, при необходимости PASS).
-2) deploy-partial.cmd — запуск (подтверждение YES).
+1) deploy-local.cmd.example → deploy-local.cmd (SRV+REF или FILE_IB, USER, при необходимости PASS).
+2) deploy-partial.cmd — запуск (подтверждение YES, либо переменная CONFIRM=YES).
 3) Папка {config_root_folder}\\ — минимальная выгрузка из плана.
-4) partial-deploy-list.txt — список для -listFile.
+4) partial-deploy-list.txt — список для -listFile, вместе с Configuration.xml, если она включена в план.
 
 Платформа 8.5: /IBConnectionString, -partial, -updateConfigDumpInfo, /UpdateDBCfg Dynamic+.
 Успех: deploy-partial-result.txt содержит 0.
@@ -195,7 +229,7 @@ def build_pack(
         )
 
     files, meta = resolve_file_list(plan_id, file_paths, custom_plan_path)
-    root_name = meta.get("config_root_folder", "config")
+    root_name = _folder_name(str(meta.get("config_root_folder") or "config"))
     title = pack_title or meta.get("title") or meta.get("id", "partial")
     pid = meta.get("id", plan_id or "custom")
 
@@ -219,8 +253,12 @@ def build_pack(
         shutil.copy2(src_file, dest)
         copied.append(rel)
 
+    list_files = list(files)
+    if meta.get("include_configuration_xml", True) and "Configuration.xml" not in list_files:
+        list_files.insert(0, "Configuration.xml")
+
     list_path = out / "partial-deploy-list.txt"
-    list_path.write_text("\n".join(files) + "\n", encoding="utf-8-sig")
+    list_path.write_text("\n".join(list_files) + "\n", encoding="utf-8-sig")
 
     manifest = out / "manifest-config-files.txt"
     manifest_lines = (["Configuration.xml"] if meta.get("include_configuration_xml", True) else []) + files

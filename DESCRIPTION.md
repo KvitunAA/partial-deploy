@@ -63,11 +63,11 @@ python -m venv .venv
 | `server` | `server_name` + `infobase_name` или полная `ib_connection_string` (`Srvr="...";Ref="...";`) |
 | `file` | `file_infobase_path` или `ib_connection_string` (`File="...";`) |
 
-Обязательно: `user`. Опционально: `password`, `platform_path`, `log_dir`, `also_write_local_cmd`.
+В `deploy-local.cmd` попадают `SRV` и `REF` либо `FILE_IB` — без кавычек. Кавычки для `/IBConnectionString` добавляет `deploy-partial.cmd`. Обязательно: `user`. Опционально: `password`, `platform_path`, `log_dir`, `also_write_local_cmd`.
 
 ### `run_partial_deploy`
 
-Реально вызывает Designer. В каталоге пакета должны быть `deploy-partial.cmd` и `deploy-local.cmd`. Без явного согласия пользователя не вызывать.
+Реально вызывает Designer. В каталоге пакета должны быть `deploy-partial.cmd` и `deploy-local.cmd`. Инструмент передаёт `CONFIRM=YES` и не ждёт повторный ввод. Без явного согласия пользователя не вызывать.
 
 ## Тестовые планы (`plans\*.json`)
 
@@ -94,7 +94,8 @@ python -m venv .venv
 
 Поля:
 
-- **`config_root_folder`** — подпапка внутри собранного пакета (не имя каталога на вашем диске). По умолчанию в коде — `config`. В `deploy-local.cmd.example` переменная `SRC` должна указывать на неё (`%~dp0config` или `%~dp0minimal-cf`).
+- **`config_root_folder`** — подпапка внутри собранного пакета (не имя каталога на вашем диске). По умолчанию в коде — `config`. `create_connection_profile` читает её из `plan.json` и пишет `SRC=%~dp0<папка>`.
+- **`include_configuration_xml`** — копирует `Configuration.xml` и ставит её первой строкой `partial-deploy-list.txt`. Без этой строки конфигуратор не загрузит корень конфигурации.
 - **`files`** — пути от корня **источника** `source_configuration_path`, слэши `/`.
 
 ## Состав пакета после сборки
