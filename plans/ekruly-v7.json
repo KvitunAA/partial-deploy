@@ -1,0 +1,28 @@
+{
+  "id": "ekruly-v7",
+  "title": "Экрулы по ТЗ v7",
+  "description": "НДС из аналитики, депо, склад в регистре соответствий, СКД и документ",
+  "config_root_folder": "Тип",
+  "include_configuration_xml": true,
+  "files": [
+    "InformationRegisters/tpaadd_АналитикаКонтрагента.xml",
+    "InformationRegisters/tpaadd_АналитикаКонтрагента/Ext/RecordSetModule.bsl",
+    "InformationRegisters/tpaadd_СоответствиеВидовРаботПодразделения.xml",
+    "Catalogs/Депо.xml",
+    "Catalogs/Депо/Ext/ObjectModule.bsl",
+    "Catalogs/Депо/Forms/ФормаЭлемента.xml",
+    "Catalogs/Депо/Forms/ФормаЭлемента/Ext/Form.xml",
+    "Catalogs/Депо/Forms/ФормаЭлемента/Ext/Form/Module.bsl",
+    "Catalogs/ВидыРабот/Forms/ФормаЭлемента.xml",
+    "Catalogs/ВидыРабот/Forms/ФормаЭлемента/Ext/Form.xml",
+    "Catalogs/ВидыРабот/Forms/ФормаЭлемента/Ext/Form/Module.bsl",
+    "Documents/tpaadd_Экрулы.xml",
+    "Documents/tpaadd_Экрулы/Forms/ФормаДокумента.xml",
+    "Documents/tpaadd_Экрулы/Forms/ФормаДокумента/Ext/Form.xml",
+    "Documents/tpaadd_Экрулы/Forms/ФормаДокумента/Ext/Form/Module.bsl",
+    "Reports/tpaadd_Экрулы/Templates/ОсновнаяСхемаКомпоновкиДанных.xml",
+    "Reports/tpaadd_Экрулы/Templates/ОсновнаяСхемаКомпоновкиДанных/Ext/Template.xml",
+    "CommonModules/tpaadd_ЭкрулыСервер.xml",
+    "CommonModules/tpaadd_ЭкрулыСервер/Ext/Module.bsl"
+  ]
+}
