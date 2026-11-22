@@ -163,6 +163,7 @@ def write_local_cmd_example(
         "@echo off",
         "REM Скопируйте в deploy-local.cmd (не коммитить).",
         "REM Кавычки в строку подключения подставляет deploy-partial.cmd.",
+        "REM Необязательно для серверной базы: RAS, CLUSTER_USER, CLUSTER_PWD, CLUSTER_ID, RAC.",
         _bat_set("PLATFORM", platform),
         f'set "SRC={src}"',
         _bat_set("LOGDIR", log),
@@ -186,9 +187,10 @@ def write_local_cmd_example(
 
 
 def _copy_runner(output_dir: Path) -> Path:
-    template = _deploy_root() / "templates" / "deploy-partial.cmd"
+    templates = _deploy_root() / "templates"
     dest = output_dir / "deploy-partial.cmd"
-    shutil.copyfile(template, dest)
+    shutil.copyfile(templates / "deploy-partial.cmd", dest)
+    shutil.copyfile(templates / "close-target-sessions.ps1", output_dir / "close-target-sessions.ps1")
     return dest
 
 
@@ -206,7 +208,8 @@ def _write_readme(
 3) Папка {config_root_folder}\\ — минимальная выгрузка из плана.
 4) partial-deploy-list.txt — список для -listFile, вместе с Configuration.xml, если она включена в план.
 
-Платформа 8.5: /IBConnectionString, -partial, -updateConfigDumpInfo, /UpdateDBCfg Dynamic+.
+Платформа 8.5: /IBConnectionString, -partial, -updateConfigDumpInfo, /UpdateDBCfg Dynamic+ -SessionTerminate force.
+Сеансы завершаются и блокируются только у этой базы.
 Успех: deploy-partial-result.txt содержит 0.
 """
     readme.write_text(text, encoding="utf-8")

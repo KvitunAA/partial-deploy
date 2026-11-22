@@ -65,8 +65,14 @@ if /I not "%CONFIRM%"=="YES" (
 )
 :confirmed
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Get-Process -Name '1cv8','1cv8c','1cv8s' -ErrorAction SilentlyContinue | Stop-Process -Force"
+echo Сеансы других информационных баз не завершаются.
+call :BlockTargetSessions
+if errorlevel 1 (
+    call :UnlockTargetSessions
+    exit /b 1
+)
+set "UC="
+if exist "%LOGDIR%\session-uc.txt" set /p UC=<"%LOGDIR%\session-uc.txt"
 timeout /t 2 /nobreak >nul
 
 set "LISTFILE_ASCII=%LOGDIR%\partial-list.txt"
@@ -81,6 +87,7 @@ if defined FILE_IB (
 ) else (
     call :LoadConfig "Srvr=""%SRV%"";Ref=""%REF%"";"
 )
+call :UnlockTargetSessions
 
 if not exist "%RESULT%" (
     echo [ОШИБКА] Нет DumpResult: "%RESULT%"
@@ -92,16 +99,48 @@ findstr /B /C:"0" "%RESULT%" >nul || exit /b 1
 echo Частичная загрузка успешна.
 exit /b 0
 
+:BlockTargetSessions
+if not exist "%ROOT%close-target-sessions.ps1" (
+    echo [ОШИБКА] Нет close-target-sessions.ps1
+    exit /b 1
+)
+if defined FILE_IB (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%close-target-sessions.ps1" -Action block -FileIb "%FILE_IB%" -Platform "%PLATFORM%" -LogDir "%LOGDIR%"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%close-target-sessions.ps1" -Action block -Srv "%SRV%" -Ref "%REF%" -User "%USER%" -Password "%PASS%" -Platform "%PLATFORM%" -LogDir "%LOGDIR%"
+)
+exit /b %ERRORLEVEL%
+
+:UnlockTargetSessions
+if defined FILE_IB exit /b 0
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%close-target-sessions.ps1" -Action unblock -Srv "%SRV%" -Ref "%REF%" -User "%USER%" -Password "%PASS%" -Platform "%PLATFORM%" -LogDir "%LOGDIR%"
+exit /b 0
+
 :LoadConfig
-if defined PASS (
-    "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /P "%PASS%" ^
+if defined PASS goto LoadWithPassword
+if defined UC (
+    "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /UC "%UC%" ^
       /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
-      /UpdateDBCfg Dynamic+ ^
+      /UpdateDBCfg Dynamic+ -SessionTerminate force ^
       /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
 ) else (
     "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" ^
       /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
-      /UpdateDBCfg Dynamic+ ^
+      /UpdateDBCfg Dynamic+ -SessionTerminate force ^
+      /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
+)
+exit /b %ERRORLEVEL%
+
+:LoadWithPassword
+if defined UC (
+    "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /P "%PASS%" /UC "%UC%" ^
+      /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
+      /UpdateDBCfg Dynamic+ -SessionTerminate force ^
+      /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
+) else (
+    "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /P "%PASS%" ^
+      /LoadConfigFromFiles "%SRC%" -listFile "%LISTFILE_ASCII%" -partial -updateConfigDumpInfo ^
+      /UpdateDBCfg Dynamic+ -SessionTerminate force ^
       /Out "%LOG%" /DumpResult "%RESULT%" /DisableStartupMessages /DisableStartupDialogs
 )
 exit /b %ERRORLEVEL%

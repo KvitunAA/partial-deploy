@@ -113,7 +113,9 @@ python -m venv .venv
 ```
 
 Загрузка (платформа 8.5):  
-`/LoadConfigFromFiles` + `-listFile` + `-partial` + `-updateConfigDumpInfo` + `/UpdateDBCfg Dynamic+` через `/IBConnectionString`.
+`/LoadConfigFromFiles` + `-listFile` + `-partial` + `-updateConfigDumpInfo` + `/UpdateDBCfg Dynamic+ -SessionTerminate force` через `/IBConnectionString`.
+
+Перед загрузкой завершаются и блокируются сеансы **только целевой базы**. Серверная база: `rac` ставит блокировку начала сеансов и завершает её сеансы, после загрузки блокировка снимается. Файловая база: завершаются процессы, в командной строке которых есть путь этой базы. Общий `Stop-Process` по всем `1cv8` не используется. Если `rac.exe` нет рядом с платформой, сеансы серверной базы завершает сам конфигуратор ключом `-SessionTerminate force`.
 
 Успех: `deploy-partial-result.txt` содержит `0`.
 
@@ -125,6 +127,7 @@ python -m venv .venv
 | `pack_builder.py` | Логика сборки |
 | `plans\` | Тестовые и пользовательские планы |
 | `templates\deploy-partial.cmd` | Шаблон батника |
+| `templates\close-target-sessions.ps1` | Блокировка и завершение сеансов только целевой базы |
 | `requirements.txt` | Зависимости Python |
 | `run_server.cmd` | Запуск |
 | `README.md` | Краткая памятка |
@@ -134,4 +137,4 @@ python -m venv .venv
 
 - `deploy-local.cmd` с паролем и адресом прода **не коммитить**.
 - `run_partial_deploy` только после явного подтверждения оператора.
-- На проде закрыть лишние сеансы конфигуратора с целевой ИБ.
+- Скрипт сам блокирует и завершает сеансы только той базы, которая указана в `deploy-local.cmd`.
