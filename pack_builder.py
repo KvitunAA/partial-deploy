@@ -205,6 +205,7 @@ def _write_readme(
 
 1) deploy-local.cmd.example → deploy-local.cmd (SRV+REF или FILE_IB, USER, при необходимости PASS).
 2) deploy-partial.cmd — запуск (подтверждение YES, либо переменная CONFIRM=YES).
+   После успешной загрузки откроется конфигуратор под тем же пользователем.
 3) Папка {config_root_folder}\\ — минимальная выгрузка из плана.
 4) partial-deploy-list.txt — список для -listFile, вместе с Configuration.xml, если она включена в план.
 

@@ -97,6 +97,29 @@ echo DumpResult:
 type "%RESULT%"
 findstr /B /C:"0" "%RESULT%" >nul || exit /b 1
 echo Частичная загрузка успешна.
+echo Запуск конфигуратора под пользователем %USER%.
+if defined FILE_IB (
+    call :OpenDesigner "File=""%FILE_IB%"";"
+) else (
+    call :OpenDesigner "Srvr=""%SRV%"";Ref=""%REF%"";"
+)
+exit /b 0
+
+:OpenDesigner
+if defined PASS goto OpenWithPassword
+if defined UC (
+    start "Конфигуратор" "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /UC "%UC%"
+) else (
+    start "Конфигуратор" "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%"
+)
+exit /b 0
+
+:OpenWithPassword
+if defined UC (
+    start "Конфигуратор" "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /P "%PASS%" /UC "%UC%"
+) else (
+    start "Конфигуратор" "%PLATFORM%" DESIGNER /IBConnectionString %1 /N "%USER%" /P "%PASS%"
+)
 exit /b 0
 
 :BlockTargetSessions
